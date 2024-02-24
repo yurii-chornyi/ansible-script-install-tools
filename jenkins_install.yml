@@ -1,0 +1,57 @@
+---
+- name: Install Jenkins
+  hosts: your_target_host
+  become: yes
+
+  tasks:
+    - name: Update apt cache (for Ubuntu)
+      when: ansible_os_family == 'Debian'
+      apt:
+        update_cache: yes
+
+    - name: Install Java
+      package:
+        name: openjdk-8-jdk
+        state: present
+      become: yes
+
+    - name: Install Jenkins Repository Key
+      become: yes
+      apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins.io.key
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Add Jenkins Repository (for Ubuntu)
+      become: yes
+      apt_repository:
+        repo: deb http://pkg.jenkins.io/debian-stable binary/
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Jenkins (for Ubuntu)
+      become: yes
+      apt:
+        name: jenkins
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Java (for Amazon Linux 2)
+      become: yes
+      amazon_linux:
+        name: java-1.8.0-openjdk
+        state: present
+      when: ansible_os_family == 'Amazon'
+
+    - name: Install Jenkins (for Amazon Linux 2)
+      become: yes
+      amazon_linux:
+        name: jenkins
+        state: present
+      when: ansible_os_family == 'Amazon'
+
+    - name: Start Jenkins service
+      become: yes
+      service:
+        name: jenkins
+        state: started
+        enabled: yes

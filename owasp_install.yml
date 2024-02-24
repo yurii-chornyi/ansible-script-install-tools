@@ -1,0 +1,47 @@
+---
+- name: Install OWASP ZAP
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update package cache (Ubuntu)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Java (Ubuntu)
+      apt:
+        name: openjdk-8-jre
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Java (Amazon Linux 2)
+      amazon_linux:
+        name: java-1.8.0-openjdk
+        state: present
+      when: ansible_os_family == 'RedHat'
+
+    - name: Download and extract OWASP ZAP
+      get_url:
+        url: "https://github.com/zaproxy/zaproxy/releases/download/{{ owasp_zap_version }}/ZAP_{{ owasp_zap_version }}_Linux.tar.gz"
+        dest: "/tmp/ZAP_{{ owasp_zap_version }}.tar.gz"
+
+    - name: Create installation directory
+      file:
+        path: "/opt/owasp"
+        state: directory
+
+    - name: Extract OWASP ZAP
+      ansible.builtin.unarchive:
+        src: "/tmp/ZAP_{{ owasp_zap_version }}.tar.gz"
+        dest: "/opt/owasp"
+        remote_src: yes
+
+    - name: Create symlink for ZAP
+      file:
+        src: "/opt/owasp/ZAP_{{ owasp_zap_version }}"
+        dest: "/opt/owasp/zap"
+        state: link
+
+  vars:
+    owasp_zap_version: "2.10.0"  # Change this to the desired version

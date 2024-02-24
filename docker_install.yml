@@ -1,0 +1,56 @@
+---
+- name: Install Docker
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Detect OS and set facts
+      set_fact:
+        is_ubuntu: "{{ 'ubuntu' in ansible_distribution.lower() }}"
+        is_amazon_linux: "{{ 'amzn' in ansible_distribution.lower() }}"
+
+    - name: Install required packages for Docker on Ubuntu
+      when: is_ubuntu
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+
+    - name: Install required packages for Docker on Amazon Linux 2
+      when: is_amazon_linux
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - docker
+        - docker-compose
+
+    - name: Add Docker GPG key
+      shell: curl -fsSL https://download.docker.com/linux/{{ 'ubuntu' if is_ubuntu else 'amazon' }}/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add Docker repository on Ubuntu
+      when: is_ubuntu
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/{{ 'ubuntu' if is_ubuntu else 'amazon' }} {{ ansible_distribution_release }} stable"
+
+    - name: Add Docker repository on Amazon Linux 2
+      when: is_amazon_linux
+      copy:
+        src: /etc/yum.repos.d/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker
+      package:
+        name: docker-ce
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes

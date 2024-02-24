@@ -1,0 +1,62 @@
+---
+- name: Install SonarQube
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache (for Ubuntu)
+      apt:
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Install prerequisites
+      package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - unzip
+        - wget
+        - openjdk-11-jdk  # You can adjust the JDK version as needed
+      when: ansible_os_family == 'Debian'  # Adjust for other package managers if needed
+
+    - name: Create sonarqube user
+      user:
+        name: sonarqube
+        comment: SonarQube User
+        shell: /bin/bash
+        createhome: yes
+
+    - name: Download and extract SonarQube
+      get_url:
+        url: "https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-{{ sonarqube_version }}.zip"
+        dest: "/opt/sonarqube-{{ sonarqube_version }}.zip"
+      vars:
+        sonarqube_version: "8.9.0.43852"  # Adjust the version as needed
+
+    - name: Extract SonarQube
+      unzip:
+        src: "/opt/sonarqube-{{ sonarqube_version }}.zip"
+        dest: "/opt/"
+      become_user: sonarqube
+
+    - name: Configure SonarQube
+      template:
+        src: sonarqube.conf.j2
+        dest: "/opt/sonarqube-{{ sonarqube_version }}/conf/sonar.properties"
+      become_user: sonarqube
+
+    - name: Create Systemd service for SonarQube
+      template:
+        src: sonarqube.service.j2
+        dest: "/etc/systemd/system/sonarqube.service"
+
+    - name: Start SonarQube service
+      systemd:
+        name: sonarqube
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+      become: yes

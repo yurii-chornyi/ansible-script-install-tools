@@ -1,0 +1,54 @@
+---
+- name: Install Trivy
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install required dependencies
+      package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+      when: ansible_os_family == "Debian"
+
+    - name: Add Trivy GPG key
+      apt_key:
+        url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Trivy repository
+      apt_repository:
+        repo: deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Trivy
+      package:
+        name: trivy
+        state: present
+
+    - name: Remove Trivy GPG key
+      apt_key:
+        id: 0x18F4FAF4DFF17D8D
+        state: absent
+      when: ansible_os_family == "Debian"
+
+    - name: Update package cache (for Amazon Linux 2)
+      yum:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - epel-release
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Trivy on Amazon Linux 2
+      yum:
+        name: trivy
+        state: present
+      when: ansible_os_family == "RedHat"
